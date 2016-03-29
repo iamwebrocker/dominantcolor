@@ -29,7 +29,7 @@ function lumdiff($col1,$col2){
 		}
 	}
 }
-// helper func, see if string matches hex criteria
+// helper func; see if string matches hex criteria
 function isHex($str){
 	if(isset($str) && $str != ''){
 		$test = preg_match("/[^0-9A-Fa-f]/",$str);
@@ -39,6 +39,17 @@ function isHex($str){
 	}
 	return false;
 }
+// helper func; check if an image is addressed
+function isImageFormat($image){
+	if(isset($image) && $image != ''){
+		$test = preg_match("/(jpe?g|gif|png|svg)/i",substr($image,-4,4));
+		if($test === 1){
+			return true;
+		}
+	}
+	return false;
+}
+
 //
 function getColoredPlaceholder($imgColor){
 	if(!isset($imgColor) || !isHex($imgColor) ){
@@ -61,34 +72,38 @@ $img = 'https://www.webrocker.de/blog/wp-content/uploads/2016/02/image-26-530x39
 if(isset($_POST['img']) && $_POST['img'] != ''){
 	$img = $_POST['img'];
 }
+$error = false;
+if(isImageFormat($img)){
+	// php adapt of: https://manu.ninja/dominant-colors-for-lazy-loading-images
+	$image = new Imagick($img);
+	$w = $image->width;
+	$h = $image->height;
+	$aspectRatio = ($h/$w);
+	$image->resizeImage(150, 150, Imagick::FILTER_GAUSSIAN, 1);
+	$image->quantizeImage(1, Imagick::COLORSPACE_LAB, 0, false, false);
+	$image->setFormat('RGB');
 
-// php adapt of: https://manu.ninja/dominant-colors-for-lazy-loading-images
-$image = new Imagick($img);
-$w = $image->width;
-$h = $image->height;
-$aspectRatio = ($h/$w);
-$image->resizeImage(150, 150, Imagick::FILTER_GAUSSIAN, 1);
-$image->quantizeImage(1, Imagick::COLORSPACE_LAB, 0, false, false);
-$image->setFormat('RGB');
+	$hexImg = bin2hex($image);
+	$imgColor = substr($hexImg, 0, 6);  // ee ff cc
+	$r = hexdec(substr($hexImg, 0, 2)); // ee -> 238
+	$g = hexdec(substr($hexImg, 2, 2)); // ff -> 255
+	$b = hexdec(substr($hexImg, 4, 2)); // cc -> 204
 
-$hexImg = bin2hex($image);
-$imgColor = substr($hexImg, 0, 6);  // ee ff cc
-$r = hexdec(substr($hexImg, 0, 2)); // ee -> 238
-$g = hexdec(substr($hexImg, 2, 2)); // ff -> 255
-$b = hexdec(substr($hexImg, 4, 2)); // cc -> 204
+	$textColor   = '#FFF';
+	$borderColor = '#CCC';
+	$inversColor = '#333';
 
-$textColor   = '#FFF';
-$borderColor = '#CCC';
-$inversColor = '#333';
-$contrast = lumdiff(array($r,$g,$b),array(0,0,0));
-if($contrast >= 5){
-	$textColor   = '#000';
-	$borderColor = '#333';
-	$inversColor = '#CCC';
+	$contrast = lumdiff(array($r,$g,$b),array(0,0,0));
+	if($contrast >= 5){
+		$textColor   = '#000';
+		$borderColor = '#333';
+		$inversColor = '#CCC';
+	}
+
+	$dataUrl = getColoredPlaceholder($imgColor);
+} else {
+	$error = true;
 }
-
-$dataUrl = getColoredPlaceholder($imgColor);
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -179,15 +194,19 @@ $dataUrl = getColoredPlaceholder($imgColor);
 	</head>
 	<body>
 		<?php
-		echo '
-			<figure class="item-wrap">
-				<div class="image-wrap" style="padding-top: ' . 100*$aspectRatio . '%;" data-ar="' . $aspectRatio . '">
-					<img class="item-image lazyload" width="' . $w . '" height="' . $h . '" src="' . $dataUrl . '" data-src="' . $img . '">
-				</div>
-				<figcaption class="item-info">
-					This image\'s dominant color is: <strong>#' . $imgColor . '</strong>
-				</figcaption>
-			</figure>';
+		if( $error === false ){
+			echo '
+				<figure class="item-wrap">
+					<div class="image-wrap" style="padding-top: ' . 100*$aspectRatio . '%;" data-ar="' . $aspectRatio . '">
+						<img class="item-image lazyload" width="' . $w . '" height="' . $h . '" src="' . $dataUrl . '" data-src="' . $img . '">
+					</div>
+					<figcaption class="item-info">
+						This image\'s dominant color is: <strong>#' . $imgColor . '</strong>
+					</figcaption>
+				</figure>';
+		} else {
+			echo '<p>Oops, seems there\s something about the image that doesn\'t sit well with this script.</p>';
+		}
 		?>
 		<form class="form" action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" >
 			<label for="img">Image-URL</label><input type="url" id="img" name="img" value="<?php echo $img; ?>" required>
