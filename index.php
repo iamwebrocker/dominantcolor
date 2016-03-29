@@ -205,7 +205,7 @@ if(isImageFormat($img)){
 					</figcaption>
 				</figure>';
 		} else {
-			echo '<p>Oops, seems there\s something about the image that doesn\'t sit well with this script.</p>';
+			echo '<p>Oops, seems there\'s something about the image that doesn\'t sit well with this script.</p>';
 		}
 		?>
 		<form class="form" action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" >
