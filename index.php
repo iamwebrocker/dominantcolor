@@ -29,9 +29,19 @@ function lumdiff($col1,$col2){
 		}
 	}
 }
+// helper func, see if string matches hex criteria
+function isHex($str){
+	if(isset($str) && $str != ''){
+		$test = preg_match("/[^0-9A-Fa-f]/",$str);
+		if($test === 0){
+			return true;
+		}
+	}
+	return false;
+}
 //
 function getColoredPlaceholder($imgColor){
-	if(!isset($imgColor)){
+	if(!isset($imgColor) || !isHex($imgColor) ){
 		return false;
 	}
 	$header                  = pack('H*',"474946383961");
